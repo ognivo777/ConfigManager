@@ -44,8 +44,7 @@ func (r *Repository) Init(ctx context.Context) error {
 // git runs a git command in the repository worktree, passing args directly
 // (no shell).
 func (r *Repository) run(ctx context.Context, input []byte, args ...string) ([]byte, error) {
-	full := append([]string{"-C", r.Dir}, args...)
-	cmd := exec.CommandContext(ctx, "git", full...)
+	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = r.Dir
 	if input != nil {
 		cmd.Stdin = bytes.NewReader(input)

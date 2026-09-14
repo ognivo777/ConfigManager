@@ -80,7 +80,7 @@ go build -o cm ./cmd/cm
 
 ### Install
 ```sh
-sudo copy cm /usr/local/bin
+sudo cp cm /usr/local/bin
 sudo cm --install
 sudo cm start
 ```
