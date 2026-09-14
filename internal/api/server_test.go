@@ -15,6 +15,7 @@ import (
 type fakeHandler struct{}
 
 func (f *fakeHandler) Add(req daemon.AddRequest) error { return nil }
+func (f *fakeHandler) Remove(req daemon.RemoveRequest) error { return nil }
 func (f *fakeHandler) History(ctx context.Context, opts daemon.HistoryOptions) ([]daemon.HistoryEntry, error) {
 	return []daemon.HistoryEntry{{Date: "d", File: "f", Change: "+1/-1", Commit: "abc", Subject: "s"}}, nil
 }

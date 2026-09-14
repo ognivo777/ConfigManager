@@ -28,6 +28,7 @@ type Response struct {
 // Method names.
 const (
 	MAdd     = "add"
+	MRemove  = "remove"
 	MHistory = "history"
 	MDiff    = "diff"
 	MMessage = "message"

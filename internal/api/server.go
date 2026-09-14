@@ -17,6 +17,7 @@ import (
 // Handler is implemented by the daemon to serve API methods.
 type Handler interface {
 	Add(daemon.AddRequest) error
+	Remove(daemon.RemoveRequest) error
 	History(context.Context, daemon.HistoryOptions) ([]daemon.HistoryEntry, error)
 	Diff(context.Context, daemon.DiffOptions) (string, error)
 	PreviewRestore(context.Context, string) (*daemon.RestorePreview, error)
@@ -32,6 +33,7 @@ type DaemonHandler struct{ d *daemon.Daemon }
 func NewHandler(d *daemon.Daemon) *DaemonHandler { return &DaemonHandler{d: d} }
 
 func (h *DaemonHandler) Add(req daemon.AddRequest) error { return h.d.Add(req) }
+func (h *DaemonHandler) Remove(req daemon.RemoveRequest) error { return h.d.Remove(req) }
 func (h *DaemonHandler) History(ctx context.Context, opts daemon.HistoryOptions) ([]daemon.HistoryEntry, error) {
 	return h.d.History(ctx, opts)
 }
@@ -132,6 +134,15 @@ func (s *Server) dispatch(req *Request) *Response {
 			return ErrResponse(err)
 		}
 		if err := s.h.Add(p); err != nil {
+			return ErrResponse(err)
+		}
+		return OkResponse(nil)
+	case MRemove:
+		var p daemon.RemoveRequest
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return ErrResponse(err)
+		}
+		if err := s.h.Remove(p); err != nil {
 			return ErrResponse(err)
 		}
 		return OkResponse(nil)

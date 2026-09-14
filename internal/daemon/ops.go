@@ -16,6 +16,12 @@ type AddRequest struct {
 	AbsPath string
 }
 
+// RemoveRequest describes a file unregistration request.
+type RemoveRequest struct {
+	// AbsPath is the already-resolved and validated absolute path.
+	AbsPath string
+}
+
 // Add registers a new monitored file: registry symlink + snapshot + initial commit.
 func (d *Daemon) Add(req AddRequest) error {
 	abs := req.AbsPath
@@ -84,6 +90,60 @@ func (d *Daemon) Add(req AddRequest) error {
 	d.lastCommit = commitID
 	d.mu.Unlock()
 	d.log.Info("added monitored file", "path", abs, "commit", commitID)
+	return nil
+}
+
+// Remove unregisters a monitored file: unwatch, drop registry entry, remove its
+// snapshot, and commit the deletion. This is the reverse of Add.
+func (d *Daemon) Remove(req RemoveRequest) error {
+	abs := req.AbsPath
+
+	d.mu.Lock()
+	mp, monitored := d.monitored[abs]
+	if !monitored {
+		d.mu.Unlock()
+		return fmt.Errorf("not monitored: %s", abs)
+	}
+	delete(d.monitored, abs)
+	d.mu.Unlock()
+
+	// Stop watching so no further events for this path are processed.
+	if d.watch != nil {
+		_ = d.watch.Remove(abs)
+	}
+
+	// Remove registry entry. This must happen after unwatching so a stale event
+	// cannot recreate monitoring state for the now-unmonitored path.
+	if err := d.links.Remove(abs); err != nil {
+		return fmt.Errorf("failed to update registry: %w", err)
+	}
+
+	// Remove the snapshot and commit the deletion in one step.
+	rel := d.monitoredRel(abs)
+	if mp != nil && mp.Exists {
+		if err := d.repo.RemoveSnapshot(rel); err != nil {
+			d.repo.Stage(context.Background(), []string{rel})
+			d.log.Error("failed to remove snapshot; retaining monitored record", "path", abs, "error", err)
+			return err
+		}
+	} else {
+		// Snapshot was already deleted; nothing to stage.
+		_ = d.repo.RemoveSnapshot(rel)
+		return nil
+	}
+
+	if err := d.repo.Stage(context.Background(), []string{rel}); err != nil {
+		return fmt.Errorf("failed to stage snapshot removal: %w", err)
+	}
+	msg := fmt.Sprintf("Remove monitored file: %s", abs)
+	commitID, err := d.repo.Commit(context.Background(), msg)
+	if err != nil {
+		return fmt.Errorf("failed to create removal commit: %w", err)
+	}
+	d.mu.Lock()
+	d.lastCommit = commitID
+	d.mu.Unlock()
+	d.log.Info("removed monitored file", "path", abs, "commit", commitID)
 	return nil
 }
 

@@ -78,6 +78,15 @@ func (w *Watcher) Add(path string) error {
 	return nil
 }
 
+// Remove stops watching the path. The parent watch is shared with any other
+// monitored paths, so it is left in place until Close.
+func (w *Watcher) Remove(path string) error {
+	if err := w.fw.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 // Close shuts the watcher down.
 func (w *Watcher) Close() error {
 	// fsnotify Close also closes the event/error channels.

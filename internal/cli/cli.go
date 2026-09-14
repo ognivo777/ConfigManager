@@ -64,6 +64,10 @@ func Run(args []string) int {
 		if err := cmdMessage(args[1:]); err != nil {
 			return fail(err)
 		}
+	case "remove":
+		if err := cmdRemove(args[1:]); err != nil {
+			return fail(err)
+		}
 	case "restore":
 		if err := cmdRestore(args[1:]); err != nil {
 			return fail(err)
@@ -127,6 +131,35 @@ func cmdAdd(args []string) error {
 			errs = append(errs, fmt.Errorf("%s: %w", a, err))
 		} else {
 			fmt.Println("Add monitored file:", a)
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
+}
+
+// cmdRemove unregisters one or more monitored files (reverse of cmdAdd).
+func cmdRemove(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("usage: cm remove <path> [<path> ...]")
+	}
+
+	abs := make([]string, 0, len(args))
+	for _, p := range args {
+		a, err := resolveValidate(p)
+		if err != nil {
+			return err
+		}
+		abs = append(abs, a)
+	}
+
+	var errs []error
+	for _, a := range abs {
+		if err := doCall(api.MRemove, daemon.RemoveRequest{AbsPath: a}, nil); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", a, err))
+		} else {
+			fmt.Println("Remove monitored file:", a)
 		}
 	}
 	if len(errs) > 0 {
@@ -481,6 +514,7 @@ Usage:
   cm                                   Show this help
   cm -d [/path/to/repository]          Run the daemon
   cm add <path> [<path> ...]             Register one or more monitored files
+  cm remove <path> [<path> ...]          Stop monitoring file(s)
   cm ls [--all]                        List monitored files under the current directory (--all for complete list)
   cm status                           List all entries in the current directory, marking monitored ones (*)
   cm history [<file>] [--all]          Show snapshot history

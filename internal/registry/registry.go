@@ -76,6 +76,15 @@ func (r *Registry) IsRegistered(abs string) bool {
 	return err == nil
 }
 
+// Remove unregisters a monitored path by removing its registry entry.
+func (r *Registry) Remove(abs string) error {
+	full := filepath.Join(r.Dir, r.relFor(abs))
+	if err := os.Remove(full); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 // entryTarget returns the monitored target path represented by a registry file,
 // whether it is a symlink or a marker file. ok=false for invalid entries.
 func entryTarget(path string, info os.FileInfo) (string, bool) {
